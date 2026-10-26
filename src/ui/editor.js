@@ -12,6 +12,8 @@ import { renderThesisPanel } from './thesisPanel.js';
 import { renderFigurePanel } from './figurePanel.js';
 import { brandMark } from './home.js';
 import { setFmt } from '../stats/report.js';
+import { registerProjectStyles } from '../figure/imageStyle.js';
+import { attachDirect, closePop } from './direct.js';
 import { PALETTES } from '../palette.js';
 
 let E = null; // estado del editor abierto
@@ -32,6 +34,7 @@ export async function openEditor(app, projectId, figureId) {
   const project = await getProject(projectId);
   if (!project) throw new Error('El proyecto no existe en esta computadora.');
   for (const pl of project.palettes || []) if (!PALETTES.some((x) => x.id === pl.id)) PALETTES.push(pl);
+  registerProjectStyles(project);
   const tl = await listTables(projectId);
   let figs = await listFigures(projectId);
   if (!figs.length) { await createFigure(projectId, defaultFigure({ style: project.meta.styleId || 'tesis', media: { profileId: project.meta.mediaId || 'tesis-a4', quality: 'estandar' } })); figs = await listFigures(projectId); }
@@ -262,6 +265,7 @@ function renderViewTabs() {
 }
 function renderBoard() {
   if (!E) return;
+  closePop();
   const b = E.$.boardBody;
   if (E.view === 'table') { renderTableView(E, b); return; }
   if (E.view === 'results') { renderResultsView(E, b); return; }
@@ -277,16 +281,11 @@ function renderBoard() {
   else { r.svg.removeAttribute('width'); r.svg.removeAttribute('height'); paper.style.aspectRatio = `${wmm} / ${hmm}`; paper.style.setProperty('--ar', wmm / hmm); }
   paper.appendChild(r.svg);
   // clic en un panel: lo elige para editar
-  r.svg.addEventListener('click', (e) => {
-    const g = e.target.closest('[data-panel]');
-    if (!g) return;
-    const i = E.fig.panels.findIndex((p) => p.id === g.getAttribute('data-panel'));
-    if (i >= 0 && i !== E.activePanel) { E.activePanel = i; if (E.leftTab !== 'graf') E.leftTab = 'graf'; renderLeft(); markActive(); }
-  });
+  attachDirect(E, r.svg);
   const wrap = el('div', { class: 'paper-wrap' }, paper);
   const info = el('div', { class: 'board-info' });
   const m = r.th;
-  info.append(el('span', {}, `${wmm.toFixed(0)} × ${hmm.toFixed(0)} mm`), el('span', {}, `${E.fig.panels.length} panel${E.fig.panels.length === 1 ? '' : 'es'}`));
+  info.append(el('span', {}, `${wmm.toFixed(0)} × ${hmm.toFixed(0)} mm`), el('span', {}, `${E.fig.panels.length} panel${E.fig.panels.length === 1 ? '' : 'es'}`), el('span', { class: 'bi-hint' }, 'Tocá un texto, una barra, un eje o la leyenda para editarlo · doble clic agrega una nota'));
   if (r.warnings.length) info.appendChild(el('span', { class: 'bi-warn', title: r.warnings.join('\n') }, `${r.warnings.length} aviso${r.warnings.length > 1 ? 's' : ''}: ${r.warnings[0]}`));
   b.append(wrap, info);
   attachTips(r.svg);

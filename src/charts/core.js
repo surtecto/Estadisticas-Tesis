@@ -35,11 +35,11 @@ export function fitText(str, size, maxW, family, weight = 400) {
   while (s.length > 4 && textWidth(s + '…', size, family, weight) > maxW) s = s.slice(0, -1);
   return s.trimEnd() + '…';
 }
-export function text(g, x, y, str, { size, fill, family, weight = 400, anchor = 'start', baseline = 'alphabetic', rotate = 0, italic = false, upper = false, cls = null, letterSpacing = null } = {}) {
+export function text(g, x, y, str, { size, fill, family, weight = 400, anchor = 'start', baseline = 'alphabetic', rotate = 0, italic = false, upper = false, cls = null, letterSpacing = null, edit = null, axis = null } = {}) {
   const t = svgEl('text', {
     x, y, 'font-size': size, fill, 'font-family': fontStack(family), 'font-weight': weight, 'text-anchor': anchor,
     'dominant-baseline': baseline === 'alphabetic' ? null : baseline, transform: rotate ? `rotate(${rotate} ${x} ${y})` : null, 'font-style': italic ? 'italic' : null, class: cls,
-    'letter-spacing': letterSpacing,
+    'letter-spacing': letterSpacing, 'data-edit': edit, 'data-axis': axis,
   }, g);
   t.textContent = upper ? String(str).toUpperCase() : String(str ?? '');
   return t;
@@ -76,9 +76,16 @@ export function categoricalColors(th, panel, n) {
 }
 // la categoría conserva su color aunque un filtro la deje sola (el color sigue a la entidad, no a su posición)
 export function colorScale(ctx, key, levelsShown) {
-  const all = key ? levelsOf(ctx.table, key) : ['__'];
+  let all = key ? levelsOf(ctx.table, key) : ['__'];
   const custom = (ctx.panel.options && ctx.panel.options.colors) || {};
-  const base = categoricalColors(ctx.th, ctx.panel, all.length);
+  let base = categoricalColors(ctx.th, ctx.panel, all.length);
+  // con más categorías que colores, se reparte la paleta entre las que se ven (evita repetir colores)
+  const pal0 = getPalette((ctx.panel.options && ctx.panel.options.palette) || ctx.th.paletteId || ctx.th.palette);
+  if (key && pal0 && pal0.colors && all.length > pal0.colors.length && ctx.rows) {
+    const j = colIndex(ctx.table, key);
+    const shown = new Set(ctx.rows.map((r) => r[j]).filter((v) => v != null).map(String));
+    if (shown.size <= pal0.colors.length) { all = all.filter((l) => shown.has(l)); base = categoricalColors(ctx.th, ctx.panel, all.length); }
+  }
   const hl = ctx.opt.highlight;
   return (lvl) => {
     const i = all.indexOf(String(lvl));
@@ -183,12 +190,39 @@ export function niceLinear(domain, n, { zero = false, min = null, max = null, lo
   if (a === b) { a -= Math.abs(a) * 0.1 || 1; b += Math.abs(b) * 0.1 || 1; }
   if (min != null && min !== '' && Number.isFinite(+min)) a = +min;
   if (max != null && max !== '' && Number.isFinite(+max)) b = +max;
-  if (log) { a = Math.max(a, 1e-9); const s = d3.scaleLog().domain([a, b]).nice(); return s; }
+  if (log) {
+    a = Math.max(a > 0 ? a : Math.abs(b) / 1000 || 1e-3, 1e-12);
+    const s = d3.scaleLog().domain([a, Math.max(b, a * 10)]).nice();
+    s.ticks = () => logTicks(s.domain());
+    return s;
+  }
   const s = d3.scaleLinear().domain([a, b]);
   if (min == null || min === '' || max == null || max === '') s.nice(n);
   return s;
 }
-function tickFmt(ctx, axis) {
+// marcas de una escala logarítmica: potencias de 10 (y 2 y 5 si el rango es corto)
+export function logTicks([a, b]) {
+  const lo = Math.floor(Math.log10(a) + 1e-9), hi = Math.ceil(Math.log10(b) - 1e-9);
+  let out = [];
+  for (let e = lo; e <= hi; e++) out.push(10 ** e);
+  out = out.filter((v) => v >= a * 0.999 && v <= b * 1.001);
+  if (out.length < 3) { out = []; for (let e = lo; e <= hi; e++) for (const m of [1, 2, 5]) { const v = m * 10 ** e; if (v >= a * 0.999 && v <= b * 1.001) out.push(v); } }
+  return out;
+}
+// unidades con prefijos: distancias en metros, tiempos en segundos, superficies en m²
+export const UNIT_SYSTEMS = [['', 'Número'], ['metros', 'Distancia (valores en metros → mm, cm, m, km)'], ['segundos', 'Tiempo (valores en segundos → s, min, h, días, años)'], ['m2', 'Superficie (valores en m² → m², ha, km²)'], ['pesos', 'Dinero ($)']];
+export function unitFormat(sys, comma = true) {
+  const f = makeFormat({ comma, compact: false });
+  const g = (v, u) => { const r = Math.abs(v) >= 100 ? Math.round(v) : +v.toPrecision(3); return `${f(r, Math.abs(r) < 10 && !Number.isInteger(r) ? 0.1 : 1)}\u202f${u}`; };
+  if (sys === 'metros') return (v) => { const a = Math.abs(v); return a === 0 ? '0' : a < 0.01 ? g(v * 1000, 'mm') : a < 1 ? g(v * 100, 'cm') : a < 1000 ? g(v, 'm') : g(v / 1000, 'km'); };
+  if (sys === 'segundos') return (v) => { const a = Math.abs(v); return a < 60 ? g(v, 's') : a < 3600 ? g(v / 60, 'min') : a < 86400 ? g(v / 3600, 'h') : a < 31557600 ? g(v / 86400, 'días') : g(v / 31557600, 'años'); };
+  if (sys === 'm2') return (v) => { const a = Math.abs(v); return a < 10000 ? g(v, 'm²') : a < 1e6 ? g(v / 10000, 'ha') : g(v / 1e6, 'km²'); };
+  if (sys === 'pesos') return (v) => `$\u202f${f(v)}`;
+  return null;
+}
+export function tickFmt(ctx, axis) {
+  const us = ctx.opt[axis === 'y' ? 'yUnits' : 'xUnits'];
+  if (us) { const uf = unitFormat(us, ctx.comma); if (uf) return uf; }
   const o = ctx.opt;
   return makeFormat({ comma: ctx.comma, pct: axis === 'y' ? o.yPct : o.xPct, decimals: axis === 'y' ? (o.yDecimals ?? null) : (o.xDecimals ?? null) });
 }
@@ -243,9 +277,9 @@ export function axisLeft(ctx, g, sy, inner, { ticks = null, labels = null, title
     const yy = band ? sy(v) + sy.bandwidth() / 2 : sy(v);
     if (th.axisLineY && !band) svgEl('line', { x1: xx - tl, x2: xx, y1: yy, y2: yy, stroke: ctx.c.axis, 'stroke-width': ctx.axisW }, g);
     const lab = labels ? labels[i] : band ? v : f(v, vals.length > 1 ? vals[1] - vals[0] : null);
-    text(g, xx - tl - tick * 0.35, yy, lab, { size: tick, fill: ctx.c.muted, family: th.font, anchor: 'end', baseline: 'central' });
+    text(g, xx - tl - tick * 0.35, yy, lab, { size: tick, fill: ctx.c.muted, family: th.font, anchor: 'end', baseline: 'central', axis: band ? null : 'y' });
   });
-  if (title) text(g, ctx.panelBox.x + th.sizes.axis * 0.85, inner.y + inner.h / 2, fitText(title, th.sizes.axis, inner.h * 1.04, th.font, 600), { size: th.sizes.axis, fill: ctx.c.ink, family: th.font, anchor: 'middle', baseline: 'central', rotate: -90, weight: 600 });
+  if (title) text(g, ctx.panelBox.x + th.sizes.axis * 0.85, inner.y + inner.h / 2, fitText(title, th.sizes.axis, inner.h * 1.04, th.font, 600), { size: th.sizes.axis, fill: ctx.c.ink, family: th.font, anchor: 'middle', baseline: 'central', rotate: -90, weight: 600, edit: band && ctx.panel.type === 'bar' && ctx.opt.orientation === 'h' ? 'opt.xTitle' : 'opt.yTitle' });
 }
 export function axisBottom(ctx, g, sx, inner, { ticks = null, labels = null, title = '', band = false, rot = 0, lines = 1, fmt = null, time = false }) {
   const th = ctx.th, tick = th.sizes.tick, tl = ctx.tickLen;
@@ -270,9 +304,9 @@ export function axisBottom(ctx, g, sx, inner, { ticks = null, labels = null, tit
     const lab = labs ? labs[i] : band ? v : time ? tfmt(v) : f(v, vals.length > 1 ? vals[1] - vals[0] : null);
     if (rot) text(g, xx, yy + tl + tick * 0.4, lab, { size: tick, fill: ctx.c.muted, family: th.font, anchor: 'end', baseline: 'hanging', rotate: rot });
     else if (lines > 1) multiline(g, xx, yy + tl + tick, wrapText(lab, tick, (band ? sx.step() : inner.w / vals.length) * 0.95, th.font, 400, lines), { size: tick, fill: ctx.c.muted, family: th.font, anchor: 'middle' });
-    else text(g, xx, yy + tl + tick * 1.05, lab, { size: tick, fill: ctx.c.muted, family: th.font, anchor: 'middle' });
+    else text(g, xx, yy + tl + tick * 1.05, lab, { size: tick, fill: ctx.c.muted, family: th.font, anchor: 'middle', axis: band ? null : 'x' });
   });
-  if (title) text(g, inner.x + inner.w / 2, ctx.panelBox.y + ctx.panelBox.h - th.sizes.axis * 0.35, fitText(title, th.sizes.axis, inner.w, th.font, 600), { size: th.sizes.axis, fill: ctx.c.ink, family: th.font, anchor: 'middle', weight: 600 });
+  if (title) text(g, inner.x + inner.w / 2, ctx.panelBox.y + ctx.panelBox.h - th.sizes.axis * 0.35, fitText(title, th.sizes.axis, inner.w, th.font, 600), { size: th.sizes.axis, fill: ctx.c.ink, family: th.font, anchor: 'middle', weight: 600, edit: ctx.panel.type === 'bar' && ctx.opt.orientation === 'h' ? 'opt.yTitle' : 'opt.xTitle' });
 }
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 function timeFormat(vals) {
@@ -305,8 +339,10 @@ export function measureLegend(ctx, lg, maxW) {
   if (lg.type === 'size') return pos === 'right' ? { w: fs * 8, h: titleH + fs * 7 } : { w: maxW, h: titleH + fs * 4.5 };
   return { w: 0, h: 0 };
 }
-export function drawLegend(ctx, g, lg, box) {
+export function drawLegend(ctx, g0, lg, box) {
   if (!lg || ctx.opt.legend === 'none') return;
+  const g = svgEl('g', { 'data-legend': '1' }, g0);
+  if (ctx.opt.legendTitle != null && ctx.opt.legendTitle !== '') lg = { ...lg, title: ctx.opt.legendTitle };
   const th = ctx.th, fs = th.sizes.legend, c = ctx.c;
   const pos = ctx.legendPos;
   const sw = fs * 1.05, gap = fs * 0.45;
@@ -314,7 +350,8 @@ export function drawLegend(ctx, g, lg, box) {
   if (lg.title) {
     if (pos === 'right') { text(g, x, y + fs, lg.title, { size: fs, fill: c.ink, family: th.font, weight: 700 }); y += fs * 1.45; }
   }
-  const swatch = (it, sx, sy) => {
+  const swatch = (it, sx, sy, gt = g) => {
+    const g = gt;
     const shape = it.shape || th.legendShape;
     if (shape === 'line' || shape === 'dash') svgEl('line', { x1: sx, x2: sx + sw, y1: sy + sw / 2, y2: sy + sw / 2, stroke: it.color, 'stroke-width': ctx.lineW * 1.2, 'stroke-dasharray': shape === 'dash' ? `${ctx.lineW * 2.5} ${ctx.lineW * 1.6}` : null, 'stroke-linecap': 'round' }, g);
     else if (shape === 'circle') svgEl('circle', { cx: sx + sw / 2, cy: sy + sw / 2, r: sw * 0.42, fill: it.fill || it.color }, g);
@@ -322,14 +359,14 @@ export function drawLegend(ctx, g, lg, box) {
   };
   if (lg.type === 'cat') {
     if (pos === 'right') {
-      lg.items.forEach((it, i) => { const yy = y + i * fs * 1.5; swatch(it, x, yy); text(g, x + sw + gap, yy + sw * 0.78, it.label, { size: fs, fill: c.ink, family: th.font }); });
+      lg.items.forEach((it, i) => { const yy = y + i * fs * 1.5; const gi = svgEl('g', { 'data-cat': it.label }, g); swatch(it, x, yy, gi); text(gi, x + sw + gap, yy + sw * 0.78, it.label, { size: fs, fill: c.ink, family: th.font }); });
     } else {
       let xx = x, yy = y + fs * 0.25;
       if (lg.title) { text(g, xx, yy + sw * 0.78, lg.title + ':', { size: fs, fill: c.ink, family: th.font, weight: 700 }); xx += textWidth(lg.title + ':', fs, th.font, 700) + fs * 0.8; }
       for (const it of lg.items) {
         const w = sw + gap + textWidth(it.label, fs, th.font);
         if (xx + w > box.x + box.w && xx > box.x) { xx = box.x; yy += fs * 1.55; }
-        swatch(it, xx, yy); text(g, xx + sw + gap, yy + sw * 0.78, it.label, { size: fs, fill: c.ink, family: th.font });
+        const gi = svgEl('g', { 'data-cat': it.label }, g); swatch(it, xx, yy, gi); text(gi, xx + sw + gap, yy + sw * 0.78, it.label, { size: fs, fill: c.ink, family: th.font });
         xx += w + fs * 1.4;
       }
     }

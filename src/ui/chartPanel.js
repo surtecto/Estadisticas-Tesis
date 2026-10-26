@@ -4,6 +4,7 @@ import { CHART_TYPES, TYPE_GROUPS, TYPE_ICONS, getType, defaultPanel } from '../
 import { AGGS, FILTER_OPS, levelsOf, getCol, isNum, isCat, typeName } from '../data/table.js';
 import { RAMPS, PALETTES, paletteColors, getPalette } from '../palette.js';
 import { PROVINCES } from '../charts/geo.js';
+import { UNIT_SYSTEMS } from '../charts/core.js';
 import { scaledTheme } from '../charts/figure.js';
 
 const LETTER = (i) => String.fromCharCode(65 + i);
@@ -242,8 +243,8 @@ function optControl(E, p, t, id) {
     case 'showValues': return optCheck(E, p, 'showValues', 'Mostrar los valores', p.type === 'pie' || p.type === 'treemap' || p.type === 'kpi');
     case 'errorBars': return (p.type === 'meanci' || p.agg === 'mean') ? optSelect(E, p, 'errorBars', 'Barras de error', [['', p.type === 'meanci' ? 'IC 95 %' : 'Ninguna'], ['ci', 'Intervalo de confianza del 95 %'], ['se', 'Error estándar'], ['sd', 'Desvío estándar']], { hint: 'Decí siempre en el epígrafe qué muestran: no es lo mismo un IC que un DE.' }) : null;
     case 'highlight': { const k = p.type === 'line' || p.type === 'scatter' || p.type === 'box' && e.color ? e.color || e.x : e.x || e.color; const lv = levelOpts(t, k); return lv.length ? optSelect(E, p, 'highlight', 'Destacar una categoría (las demás en gris)', [['', '— ninguna —'], ...lv]) : null; }
-    case 'yAxis': return el('details', { class: 'sec' }, el('summary', {}, 'Eje vertical y línea de referencia'), two(optNum(E, p, 'yMin', 'Mínimo'), optNum(E, p, 'yMax', 'Máximo')), optText(E, p, 'yTitle', 'Título del eje', 'automático'), two(optNum(E, p, 'refLine', 'Línea de referencia en'), optText(E, p, 'refLabel', 'Rótulo de la línea', 'p. ej. media provincial')), optCheck(E, p, 'yZero', 'Incluir el cero'), optCheck(E, p, 'yLog', 'Escala logarítmica'), optNum(E, p, 'yDecimals', 'Decimales en el eje'));
-    case 'xAxis': return el('details', { class: 'sec' }, el('summary', {}, 'Eje horizontal'), two(optNum(E, p, 'xMin', 'Mínimo'), optNum(E, p, 'xMax', 'Máximo')), optText(E, p, 'xTitle', 'Título del eje', 'automático'), optCheck(E, p, 'xZero', 'Incluir el cero'), optCheck(E, p, 'xLog', 'Escala logarítmica'));
+    case 'yAxis': return el('details', { class: 'sec' }, el('summary', {}, 'Eje vertical y línea de referencia'), two(optNum(E, p, 'yMin', 'Mínimo'), optNum(E, p, 'yMax', 'Máximo')), optText(E, p, 'yTitle', 'Título del eje', 'automático'), two(optNum(E, p, 'refLine', 'Línea de referencia en'), optText(E, p, 'refLabel', 'Rótulo de la línea', 'p. ej. media provincial')), optSelect(E, p, 'yUnits', 'Unidades', UNIT_SYSTEMS), optCheck(E, p, 'yZero', 'Incluir el cero'), optCheck(E, p, 'yLog', 'Escala logarítmica'), optNum(E, p, 'yDecimals', 'Decimales en el eje'));
+    case 'xAxis': return el('details', { class: 'sec' }, el('summary', {}, 'Eje horizontal'), two(optNum(E, p, 'xMin', 'Mínimo'), optNum(E, p, 'xMax', 'Máximo')), optText(E, p, 'xTitle', 'Título del eje', 'automático'), optSelect(E, p, 'xUnits', 'Unidades', UNIT_SYSTEMS), optCheck(E, p, 'xZero', 'Incluir el cero'), optCheck(E, p, 'xLog', 'Escala logarítmica'));
     case 'legend': return optSelect(E, p, 'legend', 'Leyenda', [['auto', 'Automática'], ['right', 'A la derecha'], ['bottom', 'Abajo'], ['top', 'Arriba'], ['none', 'Sin leyenda (rótulos directos)']]);
     case 'lollipop': return optCheck(E, p, 'lollipop', 'Piruleta (línea desde el cero)');
     case 'connect': return e.color ? optCheck(E, p, 'connect', 'Unir las medias de cada subgrupo (gráfico de interacción)', true) : null;
@@ -269,7 +270,7 @@ function optControl(E, p, t, id) {
     case 'endLabels': return e.color ? optCheck(E, p, 'endLabels', 'Nombres al final de cada línea', true) : null;
     case 'index100': return optCheck(E, p, 'index100', 'Índice: cada serie = 100 en su primer dato');
     case 'band': return p.agg === 'mean' ? optCheck(E, p, 'band', 'Banda del IC 95 % de la media') : null;
-    case 'stackArea': return optSelect(E, p, 'stackArea', 'Áreas', [['stack', 'Apiladas'], ['percent', 'Al 100 %']]);
+    case 'stackArea': return optSelect(E, p, 'stackArea', 'Áreas', [['stack', 'Apiladas'], ['percent', 'Al 100 %'], ['stream', 'Corriente (streamgraph, centrada)']]);
     case 'donut': return optSelect(E, p, 'donut', 'Forma', [['', 'Torta'], ['thick', 'Dona'], ['thin', 'Dona fina']]);
     case 'maxSlices': return optNum(E, p, 'maxSlices', 'Máximo de partes (el resto va a «Otras»)', { placeholder: '6' });
     case 'waffleIcon': return optSelect(E, p, 'waffleIcon', 'Casillas', [['', 'Cuadrados'], ['circulo', 'Círculos'], ['persona', 'Personas'], ['casa', 'Viviendas'], ['arbol', 'Árboles']]);
@@ -282,8 +283,43 @@ function optControl(E, p, t, id) {
     case 'classes': return (p.options || {}).mapMode && p.options.mapMode !== 'classes' ? null : two(optSelect(E, p, 'breakMethod', 'Cortes', [['jenks', 'Naturales (Jenks)'], ['quantile', 'Cuantiles'], ['equal', 'Iguales'], ['sd', 'Desvío estándar']]), optSelect(E, p, 'classes', 'Clases', [3, 4, 5, 6, 7].map((n) => [n, String(n)])));
     case 'rate': return e.size ? optSelect(E, p, 'rate', 'Tasa: valor / denominador ×', [['', 'sin tasa (sumar)'], [1, '1 (proporción)'], [100, '100 (%)'], [1000, '1.000 (‰)'], [10000, '10.000'], [100000, '100.000']]) : null;
     case 'mapLabels': return optSelect(E, p, 'mapLabels', 'Nombres en el mapa', [['', 'Ninguno'], [3, 'Los 3 de mayor valor'], [5, 'Los 5 de mayor valor'], [10, 'Los 10 de mayor valor']]);
+    case 'step': return optCheck(E, p, 'step', 'En escalones (valores que cambian de golpe)');
+    case 'rangeAxis': return el('details', { class: 'sec', open: true }, el('summary', {}, 'Eje'),
+      optSelect(E, p, 'xLog', 'Escala', [['', 'Automática (logarítmica si va de cm a km)'], ['true', 'Logarítmica'], ['false', 'Lineal']]),
+      optSelect(E, p, 'xUnits', 'Unidades de los valores', UNIT_SYSTEMS),
+      two(optNum(E, p, 'xMin', 'Mínimo'), optNum(E, p, 'xMax', 'Máximo')), optText(E, p, 'xTitle', 'Título del eje', 'automático'));
+    case 'zones': return zonesEditor(E, p);
+    case 'noteMode': return (p.enc || {}).note ? optSelect(E, p, 'noteMode', 'Notas', [['', 'Automático (arriba o al costado)'], ['above', 'Siempre arriba de la barra'], ['right', 'Al final de la barra'], ['inside', 'Dentro de la barra']]) : null;
+    case 'rangeColors': return el('details', { class: 'sec' }, el('summary', {}, 'Colores y leyenda de los tramos'), two(optColor(E, p, 'colorA', 'Tramo habitual'), optColor(E, p, 'colorB', 'Extensión')), two(optText(E, p, 'labelA', 'Leyenda del tramo habitual', 'nombre de la columna'), optText(E, p, 'labelB', 'Leyenda de la extensión', 'nombre de la columna')), optNum(E, p, 'barHeight', 'Alto de las barras (0,2 a 0,8 de la fila)', { placeholder: '0,42' }));
+    case 'waterfall': return el('div', {}, optCheck(E, p, 'total', 'Barra final con el total', true), two(optText(E, p, 'totalLabel', 'Rótulo del total', 'Total'), optNum(E, p, 'startValue', 'Valor inicial', { placeholder: '0' })));
+    case 'funnelShape': return optSelect(E, p, 'funnelShape', 'Forma', [['', 'Embudo (trapecios)'], ['bars', 'Barras centradas']]);
+    case 'bullet': return optText(E, p, 'bands', 'Franjas de referencia (fracciones del máximo o valores)', '0,5; 0,75; 1');
+    case 'progress': return el('div', {}, optSelect(E, p, 'progressMode', 'Mostrar', [['', 'Automático'], ['pct', 'Porcentaje'], ['value', 'Valor']]), optNum(E, p, 'progressMax', 'Valor que completa la barra', { placeholder: 'el total o 100 %' }), optSelect(E, p, 'progressColor', 'Color', [['', 'Uno por categoría'], ['single', 'Uno solo']]));
+    case 'radial': return optNum(E, p, 'radialMax', 'Valor que completa tres cuartos de vuelta', { placeholder: 'el total o el máximo' });
+    case 'gauge': return el('div', {}, two(optNum(E, p, 'gMin', 'Mínimo', { placeholder: '0' }), optNum(E, p, 'gMax', 'Máximo', { placeholder: 'el mayor dato' })), optNum(E, p, 'target', 'Meta'), optText(E, p, 'bands', 'Cortes de las franjas verde, amarilla y roja', 'p. ej. 50; 80'));
+    case 'hexbin': return optNum(E, p, 'hexSize', 'Cantidad de hexágonos a lo ancho', { placeholder: '18' });
+    case 'bumpOrder': return optCheck(E, p, 'rankAsc', 'El puesto 1 es el menor valor');
     default: return null;
   }
+}
+function optColor(E, p, key, label) {
+  const o = p.options || (p.options = {});
+  const i = el('input', { type: 'color', value: o[key] || '#2a78d6' });
+  i.addEventListener('change', () => { o[key] = i.value; E.changed(key); });
+  return el('div', { class: 'field' }, el('label', {}, label), i);
+}
+// Franjas de referencia: «valor = rótulo» por renglón (p. ej. 1 = E1 · 1000 = E2)
+function zonesEditor(E, p) {
+  const o = p.options || (p.options = {});
+  const ta = el('textarea', { rows: 5, placeholder: '3 = E1\n5000 = E2\n15000 = E3\n…' });
+  ta.value = (o.zones || []).map((z) => `${String(z.at).replace('.', ',')} = ${z.label}`).join('\n');
+  ta.addEventListener('change', () => {
+    o.zones = ta.value.split(/\n/).map((l) => { const m = l.match(/^\s*([-\d.,e]+)\s*[=:]\s*(.*)$/i); return m ? { at: parseFloat(m[1].replace(/\./g, (x, i, str) => (str.includes(',') ? '' : x)).replace(',', '.')), label: m[2].trim() } : null; }).filter((z) => z && Number.isFinite(z.at));
+    E.changed('franjas');
+  });
+  const first = el('input', { type: 'text', value: o.zoneFirst || '', placeholder: 'p. ej. E0' });
+  first.addEventListener('change', () => { o.zoneFirst = first.value; E.changed('franjas'); });
+  return el('details', { class: 'sec', open: !!(o.zones && o.zones.length) }, el('summary', {}, 'Franjas de referencia arriba'), el('div', { class: 'field' }, el('label', {}, 'Rótulo antes del primer corte'), first), el('div', { class: 'field' }, el('label', {}, 'Cortes: «valor = rótulo de la franja que empieza ahí»'), ta), el('p', { class: 'hint' }, 'Con unidades en metros: 1 = 1 m; 1000 = 1 km.'));
 }
 
 function colorsBox(E, p, t) {

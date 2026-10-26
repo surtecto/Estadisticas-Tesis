@@ -9,11 +9,14 @@ import { d3, text, textWidth, wrapText, measureLegend, drawLegend, colorScale, l
 import * as XY from './render-xy.js';
 import * as OT from './render-other.js';
 import { getType } from './types.js';
+import * as MO from './render-more.js';
 
 const PT = 72 / 25.4;
 export const RENDERERS = {
   bar: XY.bar, dot: XY.dot, meanci: XY.meanci, hist: XY.hist, density: XY.density, box: XY.box, violin: XY.violin, qq: XY.qq,
   scatter: XY.scatter, line: XY.line, area: XY.area, slope: XY.slope, pyramid: XY.pyramid, coef: XY.coef, biplot: XY.biplot,
+  range: MO.range, gantt: MO.range, timeline: MO.timeline, waterfall: MO.waterfall, funnel: MO.funnel, bullet: MO.bullet, sankey: MO.sankeyChart, sunburst: MO.sunburst, marimekko: MO.marimekko,
+  parallel: MO.parallel, rose: MO.rose, radialbar: MO.radialbar, calendar: MO.calendar, beeswarm: MO.beeswarm, ecdf: MO.ecdf, hexbin: MO.hexbin, bump: MO.bump, gauge: MO.gauge, progress: MO.progress, table: MO.tableChart,
   pie: OT.pie, waffle: OT.waffle, treemap: OT.treemap, heatmap: OT.heatmap, corr: OT.corr, radar: OT.radar, kpi: OT.kpi, map: OT.map,
 };
 
@@ -48,14 +51,14 @@ export function renderFigure(fig, env) {
   // ---- encabezado
   const titleTxt = fig.title || '';
   if (capMode === 'apa' && fig.caption?.inside !== false) {
-    text(root, pad, y + th.sizes.caption, `Figura ${fig.caption?.number || 1}`, { size: th.sizes.caption, fill: c.ink, family: th.fontTitle, weight: 700 });
+    text(root, pad, y + th.sizes.caption, `Figura ${fig.caption?.number || 1}`, { size: th.sizes.caption, fill: c.ink, family: th.fontTitle, weight: 700, edit: 'fig.caption.number' });
     y += th.sizes.caption * 1.5;
-    if (titleTxt) { const ls = wrapText(titleTxt, th.sizes.caption, innerW, th.fontTitle, 400, 3); ls.forEach((l, i) => text(root, pad, y + th.sizes.caption + i * th.sizes.caption * 1.25, l, { size: th.sizes.caption, fill: c.ink, family: th.fontTitle, italic: true })); y += ls.length * th.sizes.caption * 1.25 + th.sizes.caption * 0.7; }
+    if (titleTxt) { const ls = wrapText(titleTxt, th.sizes.caption, innerW, th.fontTitle, 400, 3); ls.forEach((l, i) => text(root, pad, y + th.sizes.caption + i * th.sizes.caption * 1.25, l, { size: th.sizes.caption, fill: c.ink, family: th.fontTitle, italic: true, edit: 'fig.title' })); y += ls.length * th.sizes.caption * 1.25 + th.sizes.caption * 0.7; }
   } else if (capMode === 'titulo' && titleTxt) {
     const ls = wrapText(titleTxt, th.sizes.title, innerW, th.fontTitle, th.titleWeight, 3);
-    ls.forEach((l, i) => text(root, th.titleAlign === 'center' ? W / 2 : pad, y + th.sizes.title + i * th.sizes.title * 1.15, l, { size: th.sizes.title, fill: c.ink, family: th.fontTitle, weight: th.titleWeight, anchor: th.titleAlign === 'center' ? 'middle' : 'start' }));
+    ls.forEach((l, i) => text(root, th.titleAlign === 'center' ? W / 2 : pad, y + th.sizes.title + i * th.sizes.title * 1.15, l, { size: th.sizes.title, fill: c.ink, family: th.fontTitle, weight: th.titleWeight, anchor: th.titleAlign === 'center' ? 'middle' : 'start', edit: 'fig.title' }));
     y += ls.length * th.sizes.title * 1.15 + th.sizes.title * 0.35;
-    if (fig.subtitle) { const ss = wrapText(fig.subtitle, th.sizes.subtitle, innerW, th.font, 400, 3); ss.forEach((l, i) => text(root, pad, y + th.sizes.subtitle + i * th.sizes.subtitle * 1.25, l, { size: th.sizes.subtitle, fill: c.muted, family: th.font })); y += ss.length * th.sizes.subtitle * 1.25 + th.sizes.subtitle * 0.6; }
+    if (fig.subtitle) { const ss = wrapText(fig.subtitle, th.sizes.subtitle, innerW, th.font, 400, 3); ss.forEach((l, i) => text(root, pad, y + th.sizes.subtitle + i * th.sizes.subtitle * 1.25, l, { size: th.sizes.subtitle, fill: c.muted, family: th.font, edit: 'fig.subtitle' })); y += ss.length * th.sizes.subtitle * 1.25 + th.sizes.subtitle * 0.6; }
   }
   // ---- pie (se mide primero; se dibuja al final con las notas reunidas)
   const footSize = th.sizes.caption * 0.92;
@@ -77,12 +80,12 @@ export function renderFigure(fig, env) {
   panels.forEach((p, i) => {
     const { col, row, span } = place[i];
     const box = { x: area.x + col * (cw + gap), y: area.y + row * (ch + gap), w: cw * span + gap * (span - 1), h: ch };
-    const g = svgEl('g', { 'data-panel': p.id }, root);
+    const g = svgEl('g', { 'data-panel': p.id, 'data-box': [box.x, box.y, box.w, box.h].map((v) => v.toFixed(2)).join(',') }, root);
     let top = 0;
     if (letters || p.title) {
       const lt = letters ? String.fromCharCode(65 + i) : '';
-      if (lt) text(g, box.x, box.y + th.sizes.letter, lt, { size: th.sizes.letter, fill: c.ink, family: th.fontTitle, weight: 800 });
-      if (p.title) text(g, box.x + (lt ? textWidth(lt, th.sizes.letter, th.fontTitle, 800) + th.sizes.panel * 0.6 : 0), box.y + th.sizes.letter, p.title, { size: th.sizes.panel, fill: c.ink, family: th.fontTitle, weight: 700 });
+      if (lt) text(g, box.x, box.y + th.sizes.letter, lt, { size: th.sizes.letter, fill: c.ink, family: th.fontTitle, weight: 800, edit: 'panel.title' });
+      if (p.title) text(g, box.x + (lt ? textWidth(lt, th.sizes.letter, th.fontTitle, 800) + th.sizes.panel * 0.6 : 0), box.y + th.sizes.letter, p.title, { size: th.sizes.panel, fill: c.ink, family: th.fontTitle, weight: 700, edit: 'panel.title' });
       top = th.sizes.letter * 1.45;
     }
     if (th.panelBg && (p.type !== 'kpi')) svgEl('rect', { x: box.x, y: box.y + top, width: box.w, height: box.h - top, fill: gray ? toGrayHex(th.panelBg) : th.panelBg, rx: th.barRadius * 2 }, g);
@@ -99,9 +102,9 @@ export function renderFigure(fig, env) {
       const ls = wrapText(part.text, footSize, innerW - (part.label ? textWidth(part.label + ' ', footSize, th.font, 400) : 0), th.font, 400, 6);
       ls.forEach((l, i) => {
         if (i === 0 && part.label) {
-          text(root, pad, fy, part.label, { size: footSize, fill: c.ink, family: th.font, italic: part.labelItalic, weight: part.labelItalic ? 400 : 700 });
-          text(root, pad + textWidth(part.label + ' ', footSize, th.font, 700), fy, l, { size: footSize, fill: c.muted, family: th.font });
-        } else text(root, pad, fy, l, { size: footSize, fill: c.muted, family: th.font });
+          text(root, pad, fy, part.label, { size: footSize, fill: c.ink, family: th.font, italic: part.labelItalic, weight: part.labelItalic ? 400 : 700, edit: 'caption' });
+          text(root, pad + textWidth(part.label + ' ', footSize, th.font, 700), fy, l, { size: footSize, fill: c.muted, family: th.font, edit: 'caption' });
+        } else text(root, pad, fy, l, { size: footSize, fill: c.muted, family: th.font, edit: 'caption' });
         fy += footSize * 1.25;
       });
     }
@@ -136,6 +139,7 @@ function estimateFooter(fig, th, w, size, capMode) {
 
 // ---------- un panel ----------
 function renderPanel(panel, box, g, env, i) {
+  g.setAttribute('data-box', [box.x, box.y, box.w, box.h].map((v) => v.toFixed(2)).join(','));
   const table = env.tables[panel.tableId] || null;
   const R = RENDERERS[panel.type];
   const th = env.th;
@@ -145,7 +149,7 @@ function renderPanel(panel, box, g, env, i) {
     table, panel, opt, th, c: env.c, g, defs: env.defs, uid, box, panelBox: box, project: env.project, gray: env.gray, comma: env.comma,
     hair: Math.max(0.35 * env.s, minLinePt(env.m) * 0.55), axisW: Math.max(0.5 * env.s, minLinePt(env.m) * 0.8), lineW: Math.max(th.lineW * env.s, minLinePt(env.m) * 1.4),
     pointR: th.pointR * env.s, tickLen: th.sizes.tick * 0.35, pad: th.sizes.tick * 0.5, gapW: th.surfaceGap * env.s,
-    notes: env.notes, warnings: env.warnings,
+    notes: env.notes, warnings: env.warnings, env,
   };
   ctx.note = (t) => { if (!env.notes.includes(t)) env.notes.push(t); };
   ctx.warn = (t) => { if (!env.warnings.includes(t)) env.warnings.push(t); };
@@ -165,8 +169,31 @@ function renderPanel(panel, box, g, env, i) {
   if (!ctx.rows.length) return ctx.need('El filtro no deja ningún caso.');
   const t = getType(panel.type);
   const fk = panel.enc && panel.enc.facet;
-  if (t.facet && fk && colIndex(table, fk) >= 0) return facetPanel(ctx, R, fk);
-  try { R(ctx); } catch (e) { console.error(e); ctx.need(`No se pudo dibujar: ${e.message}`); }
+  if (t.facet && fk && colIndex(table, fk) >= 0) facetPanel(ctx, R, fk);
+  else { try { R(ctx); } catch (e) { console.error(e); ctx.need(`No se pudo dibujar: ${e.message}`); } }
+  drawAnnotations(ctx, box);
+}
+
+// Notas libres sobre el panel: posición relativa al panel (0–1), texto en uno o varios renglones y flecha opcional
+function drawAnnotations(ctx, box) {
+  const list = ctx.panel.annotations || [];
+  if (!list.length) return;
+  const th = ctx.th;
+  for (const a of list) {
+    const g = svgEl('g', { 'data-anno': a.id }, ctx.g);
+    const x = box.x + a.x * box.w, y = box.y + a.y * box.h;
+    const size = th.sizes.label * (a.size || 1.1);
+    const col = a.color || ctx.c.ink;
+    if (a.ax != null && a.ay != null) {
+      const ax = box.x + a.ax * box.w, ay = box.y + a.ay * box.h;
+      const id = `${ctx.uid}-an`;
+      if (!ctx.defs.querySelector(`#${CSS.escape(id)}`)) { const m = svgEl('marker', { id, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto' }, ctx.defs); svgEl('path', { d: 'M0,0L10,5L0,10z', fill: col }, m); }
+      svgEl('path', { d: `M${x},${y + size * 0.3}Q${(x + ax) / 2},${Math.min(y, ay) - size}${ax},${ay}`, fill: 'none', stroke: col, 'stroke-width': ctx.lineW * 0.8, 'marker-end': `url(#${id})` }, g);
+    }
+    const lines = String(a.text || '').split('\n');
+    lines.forEach((l, i) => text(g, x, y + i * size * 1.2, l, { size, fill: col, family: a.serif ? th.fontTitle : th.font, weight: a.bold ? 700 : 400, italic: !!a.italic, anchor: a.anchor || 'start' }));
+    if (ctx.env && ctx.env.screen) svgEl('rect', { x: x - 2, y: y - size, width: Math.max(...lines.map((l) => textWidth(l, size, th.font))) + 4, height: lines.length * size * 1.2 + 2, fill: 'transparent', class: 'anno-hit' }, g);
+  }
 }
 
 function unionDom(doms, k) {

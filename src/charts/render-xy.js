@@ -28,10 +28,10 @@ export function withLegend(ctx, lg) {
   ctx.panelBox = nb;
   return nb;
 }
-const catLegend = (ctx, title, levels, color, shape) => (levels.length > 1 || ctx.opt.legend === 'force' ? { type: 'cat', title, items: levels.map((l, i) => ({ label: l, color: color(l), fill: fillFor(ctx, color(l), i), shape })) } : null);
-const tip = (el, html) => { el.setAttribute('data-tip', html); return el; };
-const fmtV = (ctx) => makeFormat({ comma: ctx.comma, decimals: ctx.opt.valueDecimals ?? null });
-function yAxisTitle(ctx, e, agg) {
+export const catLegend = (ctx, title, levels, color, shape) => (levels.length > 1 || ctx.opt.legend === 'force' ? { type: 'cat', title, items: levels.map((l, i) => ({ label: l, color: color(l), fill: fillFor(ctx, color(l), i), shape })) } : null);
+export const tip = (el, html) => { el.setAttribute('data-tip', html); return el; };
+export const fmtV = (ctx) => makeFormat({ comma: ctx.comma, decimals: ctx.opt.valueDecimals ?? null });
+export function yAxisTitle(ctx, e, agg) {
   if (ctx.opt.yTitle != null && ctx.opt.yTitle !== '') return ctx.opt.yTitle;
   if (ctx.noYTitle) return '';
   if (!e) return 'Cantidad de casos';
@@ -39,7 +39,7 @@ function yAxisTitle(ctx, e, agg) {
   const a = { mean: 'Media de ', median: 'Mediana de ', sum: '', count: 'Casos', max: 'Máximo de ', min: 'Mínimo de ', sd: 'DE de ', pct: '% de ', first: '' }[agg || 'sum'] ?? '';
   return agg === 'count' ? 'Cantidad de casos' : `${a}${a ? e.name.charAt(0).toLowerCase() + e.name.slice(1) : e.name}${unit}`;
 }
-const xAxisTitle = (ctx, e) => (ctx.opt.xTitle != null && ctx.opt.xTitle !== '' ? ctx.opt.xTitle : ctx.noXTitle || !e ? '' : `${e.name}${e.col.unit ? ` (${e.col.unit})` : ''}`);
+export const xAxisTitle = (ctx, e) => (ctx.opt.xTitle != null && ctx.opt.xTitle !== '' ? ctx.opt.xTitle : ctx.noXTitle || !e ? '' : `${e.name}${e.col.unit ? ` (${e.col.unit})` : ''}`);
 function refLines(ctx, g, sy, inner, horizontal = false, sx = null) {
   const v = ctx.opt.refLine;
   if (v == null || v === '' || !Number.isFinite(+v)) return;
@@ -133,8 +133,9 @@ export function bar(ctx) {
     const r = Math.min(rad, th / 2, len / 2);
     const fill = fillFor(ctx, colOf(c, x), ci2, horiz ? 'h' : 'v');
     let el;
-    if (horiz) el = svgEl('rect', { x: a, y: pos, width: Math.max(0, len - gapAdj), height: th, fill, rx: r }, gb);
-    else el = svgEl('rect', { x: pos, y: Math.min(a, b) + gapAdj, width: th, height: Math.max(0, len - gapAdj), fill, rx: r }, gb);
+    const dc = String(ec ? c : x);
+    if (horiz) el = svgEl('rect', { x: a, y: pos, width: Math.max(0, len - gapAdj), height: th, fill, rx: r, 'data-cat': dc }, gb);
+    else el = svgEl('rect', { x: pos, y: Math.min(a, b) + gapAdj, width: th, height: Math.max(0, len - gapAdj), fill, rx: r, 'data-cat': dc }, gb);
     if (ctx.th.patterns && ci2 > 0) el.setAttribute('stroke', colOf(c, x)), el.setAttribute('stroke-width', ctx.hair);
     tip(el, `<b>${x}</b>${ec ? ` · ${c}` : ''}<br>${fmt(v1 - v0)}${pctAxis ? ' %' : ''}`);
     return { pos, th, a, b, len };
@@ -218,7 +219,7 @@ export function dot(ctx) {
     else if (o.lollipop && pts.length === 1) svgEl('line', { x1: sv(Math.max(sv.domain()[0], 0)), x2: sv(pts[0][1]), y1: yy, y2: yy, stroke: ec ? color(pts[0][0]) : singleColor(ctx), 'stroke-width': ctx.lineW, opacity: dim ? 0.3 : 1 }, g);
     for (const [c, v] of pts) {
       const col = ec ? color(c) : singleColor(ctx);
-      tip(svgEl('circle', { cx: sv(v), cy: yy, r, fill: dim ? mixHex(col, ctx.c.bg, 0.6) : col, stroke: ctx.c.bg, 'stroke-width': ctx.gapW }, g), `<b>${x}</b>${ec ? ` · ${c}` : ''}<br>${fmt(v)}`);
+      tip(svgEl('circle', { cx: sv(v), cy: yy, r, fill: dim ? mixHex(col, ctx.c.bg, 0.6) : col, stroke: ctx.c.bg, 'stroke-width': ctx.gapW, 'data-cat': ec ? c : x }, g), `<b>${x}</b>${ec ? ` · ${c}` : ''}<br>${fmt(v)}`);
       if (o.showValues && (pts.length === 1 || v === Math.max(...pts.map((p) => p[1])))) valueLabel(ctx, g, sv(v) + r + 2.5, yy, fmt(v), { anchor: 'start', baseline: 'central' });
     }
   }
@@ -479,7 +480,7 @@ function boxLike(ctx, violin) {
       const k = kdes[gi]; const mx = Math.max(...k.pts.map((p) => p[1]));
       const half = w / 2;
       const area = d3.area().y((p) => sv(p[0])).x0((p) => mid - (p[1] / mx) * half).x1((p) => mid + (p[1] / mx) * half).curve(d3.curveBasis);
-      svgEl('path', { d: area(k.pts), fill: fillFor(ctx, colD, 0), 'fill-opacity': 0.55, stroke: colD, 'stroke-width': ctx.hair * 1.4 }, g);
+      svgEl('path', { 'data-cat': cl.length > 1 ? gq.c : gq.x, d: area(k.pts), fill: fillFor(ctx, colD, 0), 'fill-opacity': 0.55, stroke: colD, 'stroke-width': ctx.hair * 1.4 }, g);
       const bw = Math.max(w * 0.12, ctx.lineW * 2.2);
       R(d.q1, d.q3, mid - bw / 2, mid + bw / 2, { fill: ctx.c.ink, opacity: 0.85 });
       Ln(d.whiskerLow, d.whiskerHigh, mid, mid, { stroke: ctx.c.ink, 'stroke-width': ctx.hair * 1.4 });
@@ -488,7 +489,7 @@ function boxLike(ctx, violin) {
       const st = { stroke: ctx.c.ink, 'stroke-width': ctx.lineW * 0.75 };
       Ln(d.whiskerLow, d.q1, mid, mid, st); Ln(d.q3, d.whiskerHigh, mid, mid, st);
       Ln(d.whiskerLow, d.whiskerLow, mid - w * 0.18, mid + w * 0.18, st); Ln(d.whiskerHigh, d.whiskerHigh, mid - w * 0.18, mid + w * 0.18, st);
-      tip(R(d.q1, d.q3, c0, c0 + w, { fill: fillFor(ctx, colD, cl.indexOf(gq.c)), 'fill-opacity': o.points ? 0.45 : 0.85, stroke: ctx.c.ink, 'stroke-width': ctx.lineW * 0.75, rx: Math.min(ctx.th.barRadius, w / 6) }), `<b>${gq.x}</b>${cl.length > 1 ? ` · ${gq.c}` : ''}<br>Me = ${fmt(d.median)} · Q1 ${fmt(d.q1)} · Q3 ${fmt(d.q3)}<br>n = ${d.n}`);
+      tip(R(d.q1, d.q3, c0, c0 + w, { 'data-cat': cl.length > 1 ? gq.c : gq.x, fill: fillFor(ctx, colD, cl.indexOf(gq.c)), 'fill-opacity': o.points ? 0.45 : 0.85, stroke: ctx.c.ink, 'stroke-width': ctx.lineW * 0.75, rx: Math.min(ctx.th.barRadius, w / 6) }), `<b>${gq.x}</b>${cl.length > 1 ? ` · ${gq.c}` : ''}<br>Me = ${fmt(d.median)} · Q1 ${fmt(d.q1)} · Q3 ${fmt(d.q3)}<br>n = ${d.n}`);
       Ln(d.median, d.median, c0, c0 + w, { stroke: ctx.c.ink, 'stroke-width': ctx.lineW * 1.4 });
       if (o.meanMark) { const pm = P(d.mean); const s = ctx.pointR * 1.1; svgEl('path', { d: horiz ? `M${pm},${mid - s}L${pm + s},${mid}L${pm},${mid + s}L${pm - s},${mid}Z` : `M${mid},${pm - s}L${mid + s},${pm}L${mid},${pm + s}L${mid - s},${pm}Z`, fill: ctx.c.bg, stroke: ctx.c.ink, 'stroke-width': ctx.hair * 1.5 }, g); }
       if (!o.points) d.outliers.forEach((v) => { const p = P(v); svgEl('circle', { cx: horiz ? p : mid, cy: horiz ? mid : p, r: ctx.pointR * 0.8, fill: 'none', stroke: ctx.c.ink, 'stroke-width': ctx.hair * 1.4 }, g); });
@@ -657,7 +658,7 @@ export function scatter(ctx) {
     const col = numColor ? numColor(p.c) : catColor ? color(p.c) : singleColor(ctx);
     const dim = o.highlight && catColor && String(p.c) !== o.highlight;
     const jx = jit ? (((i * 0.618) % 1) - 0.5) * jit : 0, jy = jit ? (((i * 0.382) % 1) - 0.5) * jit : 0;
-    tip(svgEl('circle', { cx: sx(p.x) + jx, cy: sy(p.y) + jy, r: sizeF ? sizeF(p.s) : ctx.pointR, fill: col, 'fill-opacity': dim ? 0.15 : sizeF ? 0.6 : ctx.th.pointOpacity, stroke: ctx.c.bg, 'stroke-width': ctx.gapW * 0.7 }, gl), `${p.l != null ? `<b>${p.l}</b><br>` : ''}${ex.name}: ${fmt(p.x)}<br>${ey.name}: ${fmt(p.y)}${ec ? `<br>${ec.name}: ${p.c}` : ''}${es ? `<br>${es.name}: ${fmt(p.s)}` : ''}`);
+    tip(svgEl('circle', { cx: sx(p.x) + jx, cy: sy(p.y) + jy, r: sizeF ? sizeF(p.s) : ctx.pointR, fill: col, 'fill-opacity': dim ? 0.15 : sizeF ? 0.6 : ctx.th.pointOpacity, stroke: ctx.c.bg, 'stroke-width': ctx.gapW * 0.7, 'data-cat': catColor ? String(p.c) : null }, gl), `${p.l != null ? `<b>${p.l}</b><br>` : ''}${ex.name}: ${fmt(p.x)}<br>${ey.name}: ${fmt(p.y)}${ec ? `<br>${ec.name}: ${p.c}` : ''}${es ? `<br>${es.name}: ${fmt(p.s)}` : ''}`);
   });
   // rótulos: los extremos, o todos si son pocos
   if (el) {
@@ -709,7 +710,9 @@ function lineArea(ctx, isArea) {
   const val = (x, c) => { let v = get(x, c); if (v == null) return null; if (mode === 'percent') return tot[x] ? (v / tot[x]) * 100 : 0; if (base100) return base100[c] ? (v / base100[c]) * 100 : null; return v; };
   const xv = (x) => (isT ? (ex.col.type === 'date' ? new Date(Date.parse(x.length <= 10 ? x + 'T00:00:00Z' : x)) : +x) : x);
   let lo = Infinity, hi = -Infinity;
-  if (isArea) xs.forEach((x) => { let s = 0; cl.forEach((c) => { s += val(x, c) || 0; }); hi = Math.max(hi, s); lo = Math.min(lo, 0); });
+  const stackGen = () => { const sg = d3.stack().keys(cl).value((x, c) => val(x, c) || 0); if (mode === 'stream') sg.offset(d3.stackOffsetWiggle).order(d3.stackOrderInsideOut); return sg; };
+  if (isArea && mode === 'stream') { const st0 = stackGen()(xs); lo = d3.min(st0, (l) => d3.min(l, (d) => d[0])); hi = d3.max(st0, (l) => d3.max(l, (d) => d[1])); }
+  else if (isArea) xs.forEach((x) => { let s = 0; cl.forEach((c) => { s += val(x, c) || 0; }); hi = Math.max(hi, s); lo = Math.min(lo, 0); });
   else data.forEach((d) => { const v = val(d.keys[0], d.keys[1]); if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } });
   const bands = {};
   if (o.band && !isArea && ey && agg === 'mean') for (const c of cl) bands[c] = xs.map((x) => { const d = data.find((q) => q.keys[0] === x && q.keys[1] === c); if (!d || d.vals.length < 2) return null; const ds = S.describe(d.vals.filter(Number.isFinite)); lo = Math.min(lo, ds.ciLow); hi = Math.max(hi, ds.ciHigh); return [ds.ciLow, ds.ciHigh]; });
@@ -738,13 +741,13 @@ function lineArea(ctx, isArea) {
   const sy = sy0.copy().range([inner.y + inner.h, inner.y]);
   drawGridY(ctx, g, sy, inner, yt);
   const X = (x) => sx(xv(x));
-  const curve = o.smooth ? d3.curveMonotoneX : d3.curveLinear;
+  const curve = o.step ? d3.curveStepAfter : o.smooth ? d3.curveMonotoneX : d3.curveLinear;
   const fmt = fmtV(ctx);
   if (isArea) {
-    const st = d3.stack().keys(cl).value((x, c) => val(x, c) || 0)(xs);
+    const st = stackGen()(xs);
     st.forEach((layer, i) => {
       const c = cl[i];
-      svgEl('path', { d: d3.area().x((d) => X(d.data)).y0((d) => sy(d[0])).y1((d) => sy(d[1])).curve(curve)(layer), fill: fillFor(ctx, color(c), i), 'fill-opacity': ctx.th.patterns ? 1 : 0.88, stroke: ctx.c.bg, 'stroke-width': ctx.gapW }, g);
+      svgEl('path', { 'data-cat': c, d: d3.area().x((d) => X(d.data)).y0((d) => sy(d[0])).y1((d) => sy(d[1])).curve(curve)(layer), fill: fillFor(ctx, color(c), i), 'fill-opacity': ctx.th.patterns ? 1 : 0.88, stroke: ctx.c.bg, 'stroke-width': ctx.gapW }, g);
     });
   } else {
     cl.forEach((c, ci) => {
@@ -752,7 +755,7 @@ function lineArea(ctx, isArea) {
       const pts = xs.map((x) => [x, val(x, c)]).filter((p) => p[1] != null);
       if (bands[c]) { const bp = xs.map((x, i) => [x, bands[c][i]]).filter((p) => p[1]); svgEl('path', { d: d3.area().x((p) => X(p[0])).y0((p) => sy(p[1][0])).y1((p) => sy(p[1][1])).curve(curve)(bp), fill: col, 'fill-opacity': 0.14 }, g); }
       const dim = o.highlight && ec && c !== o.highlight;
-      svgEl('path', { d: d3.line().x((p) => X(p[0])).y((p) => sy(p[1])).curve(curve).defined((p) => p[1] != null)(pts), fill: 'none', stroke: col, 'stroke-width': dim ? ctx.lineW * 0.8 : ctx.lineW * (o.highlight && !dim ? 1.6 : 1), 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'stroke-dasharray': ctx.th.patterns && ci > 0 ? ['', '5 2', '1.5 1.8', '6 2 1.5 2'][ci % 4] : null, filter: glowFilter(ctx) }, g);
+      svgEl('path', { d: d3.line().x((p) => X(p[0])).y((p) => sy(p[1])).curve(curve).defined((p) => p[1] != null)(pts), fill: 'none', stroke: col, 'stroke-width': dim ? ctx.lineW * 0.8 : ctx.lineW * (o.highlight && !dim ? 1.6 : 1), 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'stroke-dasharray': ctx.th.patterns && ci > 0 ? ['', '5 2', '1.5 1.8', '6 2 1.5 2'][ci % 4] : null, filter: glowFilter(ctx), 'data-cat': ec ? c : null }, g);
       if (o.points !== false && (o.points || pts.length <= 24)) pts.forEach((p) => tip(svgEl('circle', { cx: X(p[0]), cy: sy(p[1]), r: ctx.pointR * 0.95, fill: col, stroke: ctx.c.bg, 'stroke-width': ctx.gapW * 0.8 }, g), `<b>${p[0]}</b>${ec ? ` · ${c}` : ''}<br>${fmt(p[1])}`));
       if (endLab && pts.length) { const last = pts[pts.length - 1]; c && (pts.lastY = sy(last[1])); }
       c && (bands[`__last_${c}`] = pts.length ? [X(pts[pts.length - 1][0]), sy(pts[pts.length - 1][1])] : null);

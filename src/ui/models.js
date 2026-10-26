@@ -2,6 +2,7 @@
 import { createProject, addTable, createFigure, defaultFigure, saveProject, getProject } from '../library.js';
 import { getSample } from '../data/samples.js';
 import { uid } from '../util.js';
+import { buildTable } from '../data/table.js';
 
 const k = (t, prefix) => { const c = t.columns.find((x) => x.name.startsWith(prefix)); if (!c) throw new Error(`Falta la columna ${prefix}`); return c.key; };
 const P = (t, type, enc, options = {}, extra = {}) => ({ id: uid('P'), tableId: t.id, type, enc, options: { legend: 'auto', ...options }, filters: [], agg: 'sum', title: '', span: 1, ...extra });
@@ -14,6 +15,33 @@ async function project(meta, sampleIds) {
 }
 
 export const MODELS = [
+  {
+    name: 'Rangos: alcance de los sentidos',
+    desc: 'Tu gráfico de barras de rango rehecho en la app: escala logarítmica de 1 cm a 1.000 km, tramo habitual y extensión, flechas, notas y franjas E0–E5. Valores aproximados leídos de la imagen.',
+    async create() {
+      const p = await createProject({ kind: 'tesis-doctoral', name: 'Modelo · Alcance de los sentidos', title: 'El paisaje pampeano desde el cuerpo: alcance de cada sentido' });
+      const raw = [
+        ['Sentido', 'Desde (m)', 'Hasta (m)', 'Extensión hasta (m)', 'Nota', 'Final'],
+        ['Cenestesia e interocepción', 0.01, 0.3, null, 'el interior del tronco', ''],
+        ['Gusto', 0.01, 0.05, null, 'la boca', ''],
+        ['Tacto y presión', 0.01, 0.7, null, 'hasta el alcance de la mano', ''],
+        ['Calor y frío en la piel', 0.1, 2.5, null, 'fuego, cuerpo ajeno · el sol, por radiación', 'difuso'],
+        ['Cinestesia (alcance del moverse)', 0.7, 22000, 60000, 'del brazo a la jornada a pie · a caballo', ''],
+        ['Olfato', 0.1, 300, 5000, 'flor, animal, rastrojo · a sotavento: quema, corral', ''],
+        ['Oído', 1, 1200, 15000, 'voz, tractor de día · tren de noche con inversión', ''],
+        ['Vista', 0.05, 4500, 400000, 'hasta el horizonte del suelo · silo, tormenta… y las estrellas', 'abierto'],
+      ];
+      const t0 = buildTable(raw, { name: 'Alcance de los sentidos', source: { file: 'gráfico de Juan', citation: 'Valores aproximados leídos del gráfico del autor.' } });
+      const t = await addTable(p.id, t0);
+      await createFigure(p.id, defaultFigure({
+        name: 'Alcance de los sentidos', style: 'ensayo', media: { profileId: 'tesis-a4', quality: 'estandar' }, page: { w: 160, h: 100 }, title: 'Alcance de cada sentido según la distancia desde el cuerpo',
+        caption: { mode: 'apa', number: '1', note: '', source: 'Elaboración propia.', autoNotes: false, inside: true }, layout: { cols: 1, gap: 5, letters: false },
+        panels: [P(t, 'range', { label: k(t, 'Sentido'), start: k(t, 'Desde'), end: k(t, 'Hasta'), end2: k(t, 'Extensión'), note: k(t, 'Nota'), shape: k(t, 'Final') },
+          { xUnits: 'metros', legend: 'bottom', labelA: 'alcance habitual', labelB: 'extensión: noche, viento a favor, aire claro', xTitle: 'distancia desde el cuerpo (escala logarítmica)', zoneFirst: 'E0', zones: [{ at: 2.5, label: 'E1' }, { at: 5000, label: 'E2' }, { at: 12000, label: 'E3' }, { at: 22000, label: 'E4' }, { at: 40000, label: 'E5' }, { at: 200000, label: 'cielo' }], xMax: 1000000 })],
+      }));
+      return finish(p.id);
+    },
+  },
   {
     name: 'Lámina de tesis: pingüinos de Palmer',
     desc: 'Cuatro paneles A–D en una página A4 (dispersión con rectas por grupo, violines con comparaciones, barras apiladas e histograma), estilo APA, y análisis guardados (ANOVA y regresión).',

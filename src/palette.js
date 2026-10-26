@@ -4,6 +4,7 @@ import { hexToRgb, rgbToHex, rgbToLab, deltaE, simulateCVD, clamp } from './util
 export const PALETTES = [
   { id: 'infoazul', name: 'Infografía azul (plana, de tu imagen)', colors: ['#1f5f99', '#2f8fd8', '#5bc0eb', '#0b3c5d', '#8fd3f4', '#3a6ea5', '#b9e3f7'] },
   { id: 'neon', name: 'Neón sobre oscuro (de tu imagen)', colors: ['#ff2e93', '#9b4dff', '#18c8ff', '#ff8a1f', '#ffe14d', '#3dffb5', '#ff5f5f'] },
+  { id: 'ensayo', name: 'Ensayo (azul y naranja, de tu gráfico de rangos)', colors: ['#2a78d6', '#e8672e', '#3f9b6a', '#8a5bb8', '#c9a227', '#5a6b7b'] },
   { id: 'pinguinos', name: 'Pingüinos (de tu gráfico: Adelia, Emperador, Papúa)', colors: ['#3176b1', '#e29f2c', '#36a177'], labels: ['Adelia', 'Emperador', 'Papúa'] },
   { id: 'sepia', name: 'Tinta y sepia (cartografía histórica)', colors: ['#8c2f1b', '#2f5d8c', '#6b4a2b', '#5a3d7a', '#4f7a5a', '#b07a2a', '#3b3b3b'] },
   { id: 'pampa', name: 'Pampa (tierras, pastos y aguas)', colors: ['#4f7a5a', '#c9a66b', '#3b78a8', '#b5523b', '#8a7a66', '#d9c58a', '#6b4a2b'] },

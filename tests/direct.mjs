@@ -1,0 +1,18 @@
+import { createRequire } from 'node:module';
+const { chromium } = createRequire(import.meta.url)('playwright');
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1500, height: 950 } });
+const logs = [];
+p.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.message + ' ' + (e.stack || '').split('\n')[1]));
+await p.goto('http://localhost:8765/index.html'); await p.waitForTimeout(800);
+await p.click('text=Lámina de tesis'); await p.waitForTimeout(1500);
+const step = async (n, f) => { try { await f(); logs.push('ok ' + n); } catch (e) { logs.push('✗ ' + n + ': ' + e.message.split('\n')[0]); } };
+await step('título', async () => { await p.click('.paper svg [data-edit="fig.title"] >> nth=0'); await p.waitForSelector('.pop'); await p.fill('.pop textarea', 'Morfometría editada desde el gráfico'); await p.click('.pop >> text=Aplicar'); await p.waitForTimeout(400); logs.push(await p.evaluate(() => window.__et.current.fig.title)); });
+await step('barra', async () => { await p.click('.paper svg rect[data-cat="Papúa"] >> nth=0', { force: true }); await p.waitForSelector('.pop'); logs.push(await p.textContent('.pop-h strong')); await p.click('.pop >> text=Destacar'); await p.waitForTimeout(400); });
+await step('eje', async () => { await p.click('.paper svg [data-axis="y"] >> nth=0'); await p.waitForSelector('.pop'); logs.push(await p.textContent('.pop-h strong')); await p.keyboard.press('Escape'); await p.mouse.click(10, 10); });
+await step('leyenda', async () => { await p.click('.paper svg [data-legend] text >> nth=0'); await p.waitForSelector('.pop'); logs.push(await p.textContent('.pop-h strong')); await p.mouse.click(10, 10); });
+await step('nota', async () => { const bx = await p.$eval('.paper svg [data-panel] >> nth=0', (g) => { const r = g.getBoundingClientRect(); return [r.x + r.width * 0.5, r.y + r.height * 0.4]; }); await p.mouse.dblclick(bx[0], bx[1]); await p.waitForSelector('.pop textarea'); await p.fill('.pop textarea', 'Papúa: las más pesadas'); await p.mouse.click(10, 10); await p.waitForTimeout(500);
+  const an = await p.$('.paper svg [data-anno] text'); const r = await an.boundingBox(); await p.mouse.move(r.x + 5, r.y + 5); await p.mouse.down(); await p.mouse.move(r.x + 60, r.y + 40, { steps: 5 }); await p.mouse.up(); await p.waitForTimeout(500);
+  logs.push(JSON.stringify(await p.evaluate(() => window.__et.current.fig.panels[0].annotations))); });
+await p.screenshot({ path: '/tmp/claude-0/d1.png' });
+console.log(logs.join('\n')); await b.close();

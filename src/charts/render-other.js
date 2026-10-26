@@ -46,7 +46,7 @@ export function pie(ctx) {
   arcs.forEach((a, i) => {
     const p = a.data;
     const dim = o.highlight && p.l !== o.highlight;
-    tip(svgEl('path', { d: arc(a), fill: dim ? mixHex(col(p), ctx.c.bg, 0.6) : fillFor(ctx, col(p), i), stroke: ctx.c.bg, 'stroke-width': ctx.gapW }, gp), `<b>${p.l}</b><br>${f((p.v / P.tot) * 100)} %`);
+    tip(svgEl('path', { d: arc(a), fill: dim ? mixHex(col(p), ctx.c.bg, 0.6) : fillFor(ctx, col(p), i), stroke: ctx.c.bg, 'stroke-width': ctx.gapW, 'data-cat': p.l }, gp), `<b>${p.l}</b><br>${f((p.v / P.tot) * 100)} %`);
     if (lab) {
       const share = p.v / P.tot;
       const mid = (a.startAngle + a.endAngle) / 2;
@@ -93,7 +93,7 @@ export function waffle(ctx) {
       const col = color(P.parts[pi].l);
       if (o.waffleIcon && ICONS[o.waffleIcon]) svgEl('path', { d: ICONS[o.waffleIcon], transform: `translate(${x + s / 2},${y + s / 2}) scale(${s * 0.44})`, fill: col }, g);
       else if (o.waffleIcon === 'circulo') svgEl('circle', { cx: x + s / 2, cy: y + s / 2, r: s * 0.4, fill: fillFor(ctx, col, pi) }, g);
-      else tip(svgEl('rect', { x: x + s * 0.06, y: y + s * 0.06, width: s * 0.88, height: s * 0.88, rx: ctx.th.barRadius ? s * 0.18 : s * 0.04, fill: fillFor(ctx, col, pi) }, g), `${P.parts[pi].l}: ${n} de 100`);
+      else tip(svgEl('rect', { 'data-cat': P.parts[pi].l, x: x + s * 0.06, y: y + s * 0.06, width: s * 0.88, height: s * 0.88, rx: ctx.th.barRadius ? s * 0.18 : s * 0.04, fill: fillFor(ctx, col, pi) }, g), `${P.parts[pi].l}: ${n} de 100`);
     }
   });
   ctx.note('Cada casilla representa el 1 % del total (redondeo por el método del resto mayor).');
@@ -117,7 +117,7 @@ export function treemap(ctx) {
   root.leaves().forEach((lf, i) => {
     const col = ec ? color(lf.data.g) : color(lf.data.name);
     const w = lf.x1 - lf.x0, h = lf.y1 - lf.y0;
-    tip(svgEl('rect', { x: box.x + lf.x0, y: box.y + lf.y0, width: w, height: h, fill: fillFor(ctx, col, i), rx: Math.min(ctx.th.barRadius, w / 6, h / 6) }, g), `<b>${lf.data.name}</b><br>${f(lf.value)} (${f((lf.value / tot) * 100)} %)`);
+    tip(svgEl('rect', { 'data-cat': ec ? lf.data.g : lf.data.name, x: box.x + lf.x0, y: box.y + lf.y0, width: w, height: h, fill: fillFor(ctx, col, i), rx: Math.min(ctx.th.barRadius, w / 6, h / 6) }, g), `<b>${lf.data.name}</b><br>${f(lf.value)} (${f((lf.value / tot) * 100)} %)`);
     const fs = ctx.th.sizes.label;
     if (w > fs * 3 && h > fs * 1.6) {
       const ink = readableOn(col);
