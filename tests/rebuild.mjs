@@ -1,0 +1,17 @@
+import { createRequire } from 'node:module';
+const { chromium } = createRequire(import.meta.url)('playwright');
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1500, height: 950 } });
+const logs = [];
+p.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.message));
+p.on('console', (m) => { if (m.type() === 'error') logs.push('console: ' + m.text()); });
+await p.goto('http://localhost:8765/index.html'); await p.waitForTimeout(800);
+const img = process.argv[2] || 'tests/img/rangos-juan.png';
+const [fc] = await Promise.all([p.waitForEvent('filechooser'), p.click('text=Rehacer un gráfico existente')]);
+await fc.setFiles(img);
+await p.waitForSelector('.itp-grid', { timeout: 120000 }); await p.waitForTimeout(500);
+await p.screenshot({ path: '/tmp/claude-0/rb1.png' });
+await p.click('#app-dialog >> text=Crear la figura'); await p.waitForTimeout(2500);
+await p.screenshot({ path: '/tmp/claude-0/rb2.png' });
+logs.push(JSON.stringify(await p.evaluate(() => { const f = window.__et.current.fig; return { style: f.style, panel: f.panels[0].type, opts: Object.keys(f.panels[0].options) }; })));
+console.log(logs.join('\n')); await b.close();

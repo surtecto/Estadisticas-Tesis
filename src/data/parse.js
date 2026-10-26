@@ -1,3 +1,4 @@
+import { interpretJSON } from './chartSpec.js';
 // Lectura de tablas: Excel (xlsx, xls, xlsm), OpenDocument (ods), CSV/TSV/TXT, JSON y texto pegado desde una planilla.
 // Devuelve hojas como matrices crudas; la tipificación de columnas está en table.js.
 import * as XLSX from 'xlsx';
@@ -70,7 +71,10 @@ export async function readTableFile(file) {
   }
   if (ext === 'json' || ext === 'geojson') {
     const obj = JSON.parse(await file.text());
-    return { file: name, sheets: [{ name: name.replace(/\.[^.]+$/, ''), rows: jsonToRows(obj) }] };
+    if (ext === 'geojson' || (obj && obj.type === 'FeatureCollection')) return { file: name, sheets: [{ name: name.replace(/\.[^.]+$/, ''), rows: jsonToRows(obj) }] };
+    // un JSON puede traer varias tablas (datos, franjas o marcas del eje de arriba…): se ofrecen todas y, si describe un gráfico, también el gráfico
+    const r = interpretJSON(obj);
+    return { file: name, sheets: r.sheets.map((s) => ({ name: s.name, rows: s.rows })), chartSpec: r.spec, notes: r.notes, json: obj };
   }
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: 'array', cellDates: true, cellNF: false, dense: false });

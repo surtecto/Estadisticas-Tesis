@@ -1,0 +1,80 @@
+{
+ "titulo": "Alcance de los sentidos",
+ "eje_x_inferior": {
+  "escala": "logarítmica",
+  "unidad": "m",
+  "titulo": "distancia desde el cuerpo (escala logarítmica)"
+ },
+ "eje_x_superior": {
+  "zonas": [
+   {
+    "id": "E0",
+    "desde": 0.01,
+    "hasta": 2.5
+   },
+   {
+    "id": "E1",
+    "desde": 2.5,
+    "hasta": 5000
+   },
+   {
+    "id": "E2",
+    "desde": 5000,
+    "hasta": 12000
+   },
+   {
+    "id": "E3",
+    "desde": 12000,
+    "hasta": 22000
+   },
+   {
+    "id": "E4",
+    "desde": 22000,
+    "hasta": 40000
+   },
+   {
+    "id": "E5",
+    "desde": 40000,
+    "hasta": 200000
+   },
+   {
+    "id": "cielo",
+    "desde": 200000,
+    "hasta": 1000000
+   }
+  ]
+ },
+ "sentidos": [
+  {
+   "nombre": "Gusto",
+   "habitual": {
+    "desde": 0.01,
+    "hasta": 0.05
+   },
+   "nota": "la boca"
+  },
+  {
+   "nombre": "Oído",
+   "habitual": {
+    "desde": 1,
+    "hasta": 1200
+   },
+   "extension": {
+    "hasta": 15000
+   },
+   "nota": "voz, tractor de día"
+  },
+  {
+   "nombre": "Vista",
+   "habitual": {
+    "desde": 0.05,
+    "hasta": 4500
+   },
+   "extension": {
+    "hasta": 400000
+   },
+   "nota": "hasta el horizonte",
+   "final": "flecha"
+  }
+ ]
+}

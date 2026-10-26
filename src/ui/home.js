@@ -44,6 +44,7 @@ export async function renderHome(app) {
     el('button', { type: 'button', class: 'blank-sheet', onclick: () => app.go('#/nuevo') }, el('span', { class: 'crop tl' }), el('span', { class: 'crop tr' }), el('span', { class: 'crop bl' }), el('span', { class: 'crop br' }),
       el('span', { class: 'bs-figure', html: sheetDrawing() }),
       el('span', { class: 'bs-title' }, 'Proyecto nuevo'), el('span', { class: 'bs-text' }, 'Los datos del trabajo, una tabla de Excel, CSV u ODS, y la primera figura: el destino, el estilo y el tipo de gráfico que conviene a tus variables.')),
+    el('button', { type: 'button', class: 'btn rebuild-btn', onclick: async () => { const { rebuildAsProject } = await import('./interpret.js'); rebuildAsProject(app); } }, el('strong', {}, 'Rehacer un gráfico existente'), el('span', {}, 'Desde una imagen (JPG, PNG, captura de pantalla) o un JSON: la app lee el tipo, los ejes de abajo y de arriba, los rótulos, las notas y los valores, y lo arma de nuevo para editarlo.')),
     el('h2', {}, 'Modelos de ejemplo'), el('p', { class: 'home-note' }, 'Proyectos armados con datos reales para ver qué se puede hacer: se copian a tu planoteca y se pueden modificar.'),
     el('div', { class: 'examples' }, ...MODELS.map((m) => el('button', { type: 'button', class: 'example', onclick: () => openModel(app, m) }, el('strong', {}, m.name), el('span', {}, m.desc)))));
   // planoteca

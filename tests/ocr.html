@@ -1,0 +1,14 @@
+<!doctype html><meta charset="utf-8"><body><script type="module">
+import Tesseract from '../node_modules/tesseract.js/dist/tesseract.esm.min.js';
+window.run = async (src, scale=3) => {
+  const im = await new Promise(r=>{const i=new Image(); i.onload=()=>r(i); i.src=src;});
+  const c=document.createElement('canvas'); c.width=im.width*scale; c.height=im.height*scale;
+  const x=c.getContext('2d'); x.imageSmoothingQuality='high'; x.drawImage(im,0,0,c.width,c.height);
+  const t0=performance.now();
+  const w = await Tesseract.createWorker('spa', 1, { workerPath: '../vendor/ocr/worker.min.js', corePath: '../vendor/ocr/', langPath: '../vendor/ocr', gzip: true });
+  await w.setParameters({ tessedit_pageseg_mode: '11' });
+  const r = await w.recognize(c, {}, { blocks: true });
+  const words=[]; for (const b of r.data.blocks||[]) for (const p of b.paragraphs) for (const l of p.lines) for (const wd of l.words) words.push([wd.text, Math.round(wd.confidence), ...['x0','y0','x1','y1'].map(k=>Math.round(wd.bbox[k]/scale))]);
+  return {ms: Math.round(performance.now()-t0), words};
+};
+</script>

@@ -57,11 +57,15 @@ export function range(ctx) {
   else { items.push({ label: o.labelA || ee.name, color: cA }); if (ex2) items.push({ label: o.labelB || ex2.name, color: cB }); }
   const box = withLegend(ctx, items.length > 1 || o.legend === 'force' ? { type: 'cat', title: ec ? ec.name : '', items } : null);
   const g = ctx.g, th = ctx.th, fs = th.sizes;
-  const labSize = fs.axis * (o.labelScale || 1.12);
+  let labSize = fs.axis * (o.labelScale || 1.12);
   const labFont = th.id === 'ensayo' || th.fontTitle !== th.font ? th.fontTitle : th.font;
-  const labW = Math.min(box.w * 0.34, Math.max(...rows.map((d) => textWidth(d.l, labSize, labFont))) + labSize * 0.9);
+  const needW = Math.max(...rows.map((d) => textWidth(d.l, labSize, labFont))) + labSize * 0.9;
+  const labW = Math.min(box.w * 0.34, needW);
+  // rótulos largos: se achica la letra antes que cortarlos (sin bajar de los mínimos del destino)
+  if (needW > labW) labSize = Math.max(fs.tick * 0.95, labSize * (labW / needW));
   const zones = Array.isArray(o.zones) ? o.zones.filter((z) => Number.isFinite(+z.at)) : [];
-  const topZ = zones.length ? fs.tick * 2 : ctx.pad;
+  const topTicks = Array.isArray(o.topTicks) ? o.topTicks.filter((z) => Number.isFinite(+z.at)) : [];
+  const topZ = zones.length || topTicks.length ? fs.tick * (o.xTopTitle ? 3.4 : 2) : ctx.pad;
   const xTitle = ctx.noXTitle ? '' : o.xTitle != null && o.xTitle !== '' ? o.xTitle : `${es.name.replace(/^(inicio|desde)\s*/i, '')}`;
   const bottom = fs.tick * 2.4 + (xTitle ? fs.axis * 1.6 : 0);
   const inner = { x: box.x + labW, y: box.y + topZ, w: box.w - labW - fs.tick * 1.5, h: box.h - topZ - bottom };
@@ -84,6 +88,17 @@ export function range(ctx) {
       if (b - a < fs.tick) continue;
       text(g, (a + b) / 2, box.y + fs.tick * 1.05, fitText(labels[i], fs.tick * 0.95, b - a, 'IBM Plex Mono'), { size: fs.tick * 0.95, fill: ctx.c.muted, family: 'IBM Plex Mono', anchor: 'middle' });
     }
+  }
+  // eje de arriba con marcas propias (otra unidad, otra serie de referencias)
+  if (topTicks.length) {
+    const yT = inner.y - fs.tick * 0.35;
+    svgEl('line', { x1: inner.x, x2: inner.x + inner.w, y1: inner.y, y2: inner.y, stroke: ctx.c.grid, 'stroke-width': ctx.hair }, g);
+    for (const tk of topTicks) {
+      const xx = X(+tk.at); if (!(xx >= inner.x - 0.5 && xx <= inner.x + inner.w + 0.5)) continue;
+      svgEl('line', { x1: xx, x2: xx, y1: inner.y, y2: inner.y - ctx.tickLen, stroke: ctx.c.axis, 'stroke-width': ctx.hair }, g);
+      text(g, xx, yT - ctx.tickLen, String(tk.label ?? ''), { size: fs.tick, fill: ctx.c.muted, family: th.font, anchor: 'middle' });
+    }
+    if (o.xTopTitle) text(g, inner.x + inner.w / 2, box.y + fs.tick * 0.9, o.xTopTitle, { size: fs.axis, fill: ctx.c.ink, family: th.font, anchor: 'middle' });
   }
   const band = d3.scaleBand().domain(rows.map((d, i) => String(i))).range([inner.y, inner.y + inner.h]).paddingInner(0.25).paddingOuter(0.15);
   const bh = Math.min(band.bandwidth() * (o.barHeight || 0.42), fs.label * 2.6);

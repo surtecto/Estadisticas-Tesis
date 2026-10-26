@@ -60,8 +60,8 @@ export async function analyzeImage(src) {
   const faint = (i, j) => { const dL = Math.abs(Lp(i, j) - bgLab[0]); return Cp(i, j) < 14 && dL > 2.5 && dL < 26; };
   // una línea de grilla es fina: a 3 px de cada lado vuelve a estar el fondo (así no se confunde con el borde de una barra)
   let hLines = 0, vLines = 0, gridSamples = [];
-  for (let j = 3; j < H - 3; j++) { let n = 0; for (let i = 0; i < W; i += 2) { if (faint(i, j) && isBg(i, j - 3) && isBg(i, j + 3)) n++; } if (n > W * 0.16) { hLines++; gridSamples.push(px(Math.floor(W / 2), j)); j += 2; } }
-  for (let i = 3; i < W - 3; i++) { let n = 0; for (let j = 0; j < H; j += 2) { if (faint(i, j) && isBg(i - 3, j) && isBg(i + 3, j)) n++; } if (n > H * 0.16) { vLines++; gridSamples.push(px(i, Math.floor(H / 2))); i += 2; } }
+  for (let j = 3; j < H - 3; j++) { let n = 0; let sx = -1; for (let i = 0; i < W; i += 2) { if (faint(i, j) && isBg(i, j - 3) && isBg(i, j + 3)) { n++; if (sx < 0 || Math.abs(i - W / 2) < Math.abs(sx - W / 2)) sx = i; } } if (n > W * 0.16) { hLines++; gridSamples.push(px(sx, j)); j += 2; } }
+  for (let i = 3; i < W - 3; i++) { let n = 0; let sy = -1; for (let j = 0; j < H; j += 2) { if (faint(i, j) && isBg(i - 3, j) && isBg(i + 3, j)) { n++; if (sy < 0 || Math.abs(j - H / 2) < Math.abs(sy - H / 2)) sy = j; } } if (n > H * 0.16) { vLines++; gridSamples.push(px(i, sy)); i += 2; } }
   const grid = gridSamples.length ? avg(gridSamples.map((p) => ({ p }))) : bg.map((v) => (dark ? v + 22 : v - 22));
   // paleta y degradés
   const groups = await extractPaletteFromImage(src, { k: 10 });
@@ -75,15 +75,25 @@ export async function analyzeImage(src) {
     if (m) { m.share += g.share; if (vivid > m.vivid) Object.assign(m, { color: g.color, vivid }); } else merged.push({ h, color: g.color, share: g.share, vivid });
   }
   const byShare = merged.sort((a, b) => b.share - a.share).map((g) => g.color);
+  // degradé: el color cambia de a poco pero sostenido y siempre en el mismo sentido (no por ruido de compresión JPEG)
   let smooth = 0, flat = 0;
-  for (let j = 0; j < H - 3; j += 2) for (let i = 0; i < W - 3; i += 2) {
+  const D = 21;
+  for (let j = 0; j < H - D; j += 3) for (let i = 0; i < W - D; i += 3) {
     if (Cp(i, j) < 18) continue;
-    const a = px(i, j);
-    const dv = deltaE(a, px(i, j + 3)), dh = deltaE(a, px(i + 3, j));
-    if (dv < 0.6 && dh < 0.6) flat++;
-    else if ((dv >= 0.6 && dv < 9 && dh < 1.5) || (dh >= 0.6 && dh < 9 && dv < 1.5)) smooth++;
+    for (const [di, dj] of [[0, 1], [1, 0]]) {
+      const pts = [0, 7, 14, 21].map((t) => [i + di * t, j + dj * t]);
+      if (pts.some(([x, y]) => Cp(x, y) < 18)) continue;
+      const labs = pts.map(([x, y]) => rgbToLab(px(x, y)));
+      const far = Math.hypot(labs[3][0] - labs[0][0], labs[3][1] - labs[0][1], labs[3][2] - labs[0][2]);
+      if (far < 2.5) { flat++; continue; }
+      if (far > 40) continue;
+      const ch = [0, 1, 2].sort((p, q) => Math.abs(labs[3][q] - labs[0][q]) - Math.abs(labs[3][p] - labs[0][p]))[0];
+      const sg = Math.sign(labs[3][ch] - labs[0][ch]);
+      const steps = [1, 2, 3].map((t) => (labs[t][ch] - labs[t - 1][ch]) * sg);
+      if (steps.every((d) => d > 0.25)) smooth++;
+    }
   }
-  const gradient = smooth > flat * 0.8 && smooth > 150;
+  const gradient = smooth > flat * 0.5 && smooth > 150;
   // halo: píxeles saturados de poca luminancia alrededor de colores brillantes sobre fondo oscuro
   const glow = dark && gradient;
   const sansHint = true;

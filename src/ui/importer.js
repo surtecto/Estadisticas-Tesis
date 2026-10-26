@@ -94,12 +94,19 @@ export async function importDialog({ title = 'Agregar datos', allowSamples = tru
   area.addEventListener('dragover', (e) => { e.preventDefault(); area.classList.add('drag'); });
   area.addEventListener('dragleave', () => area.classList.remove('drag'));
   area.addEventListener('drop', async (e) => { e.preventDefault(); area.classList.remove('drag'); const f = e.dataTransfer.files[0]; if (f) { try { src = await readTableFile(f); show(); } catch (er) { msg.textContent = er.message; msg.hidden = false; } } });
+  let chart = null;
   const show = (ready = false) => {
     clear(area);
     if (ready) { area.appendChild(el('p', {}, `Tabla «${table.name}»: ${table.rows.length} filas, ${table.columns.length} columnas.`)); return; }
+    if (src && src.chartSpec) {
+      area.appendChild(el('div', { class: 'info-note' }, el('p', {}, el('strong', {}, 'Este JSON describe un gráfico completo. '), `${(src.notes || []).join(' ')} Si lo traés como tabla suelta se pierden los ejes; conviene rehacerlo entero.`),
+        el('button', { type: 'button', class: 'btn primary small', onclick: () => { chart = { chartSpec: src.chartSpec, notes: src.notes }; const d = document.getElementById('app-dialog'); d.querySelector('.dlg-actions .btn.primary').click(); } }, 'Rehacer el gráfico completo (datos y ejes)')));
+      if (src.sheets.length > 1) area.appendChild(el('p', { class: 'note' }, `O elegí abajo una de sus ${src.sheets.length} tablas.`));
+    }
     area.appendChild(sheetConfigurator(src, (t) => { table = t; }));
   };
   area.appendChild(pick);
-  const ok = await formDialog({ title, body: area, wide: true, ok: 'Agregar la tabla', validate: () => (table && table.rows.length ? true : 'Elegí un archivo, pegá datos o una tabla de ejemplo.') });
+  const ok = await formDialog({ title, body: area, wide: true, ok: 'Agregar la tabla', validate: () => (chart || (table && table.rows.length) ? true : 'Elegí un archivo, pegá datos o una tabla de ejemplo.') });
+  if (ok && chart) return chart;
   return ok ? table : null;
 }

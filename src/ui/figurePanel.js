@@ -35,10 +35,10 @@ export function renderFigurePanel(E, b) {
   }
   const cur = getTheme(f.style);
   b.append(el('h3', { class: 'panel-h' }, 'Estilo'), sty, el('p', { class: 'note' }, cur.desc),
-    el('div', { class: 'btn-row' }, el('button', { type: 'button', class: 'btn small', onclick: () => styleFromImage(E) }, 'Estilo desde una imagen…'),
+    el('div', { class: 'btn-row' }, el('button', { type: 'button', class: 'btn small primary', title: 'Lee el gráfico de una imagen o un JSON: tipo, ejes, rótulos, notas y valores', onclick: async () => { const { rebuildInEditor } = await import('./interpret.js'); rebuildInEditor(E); } }, 'Rehacer un gráfico de una imagen…'), el('button', { type: 'button', class: 'btn small', onclick: () => styleFromImage(E) }, 'Solo el estilo…'),
       cur.custom ? el('button', { type: 'button', class: 'btn small', onclick: () => styleFromImage(E, cur) }, 'Editar este estilo…') : null,
       cur.custom ? el('button', { type: 'button', class: 'btn small ghost', onclick: () => removeStyle(E, cur) }, 'Quitar') : null),
-    el('p', { class: 'note' }, 'Subí un JPG, PNG o una captura de pantalla de un gráfico que te guste: la app lee el fondo, la tinta, la grilla, la paleta y si hay degradés o brillo, y lo guarda como estilo del proyecto.'));
+    el('p', { class: 'note' }, '«Rehacer un gráfico» lee la imagen entera (tipo, ejes, rótulos, valores) y crea una figura nueva con sus datos. «Solo el estilo» toma nada más que los colores, el fondo y la grilla para la figura actual.'));
   // ---- paleta y rampa
   const th = getTheme(f.style);
   const pid = f.palette || th.palette;

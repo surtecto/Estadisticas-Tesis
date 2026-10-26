@@ -20,7 +20,8 @@ export function renderDataPanel(E, b) {
       el('strong', {}, t.name), el('span', {}, `${t.rows.length} filas · ${t.columns.length} columnas${t.source && t.source.file ? ` · ${t.source.file}` : ''}`)));
   }
   if (!E.tableOrder.length) list.appendChild(el('p', { class: 'note' }, 'Todavía no hay datos. Agregá una tabla de Excel, CSV u ODS, pegala desde una planilla o probá con una tabla de ejemplo.'));
-  b.append(list, el('div', { class: 'btn-row' }, el('button', { type: 'button', class: 'btn primary', onclick: () => addTableFlow(E) }, '+ Agregar datos')));
+  b.append(list, el('div', { class: 'btn-row' }, el('button', { type: 'button', class: 'btn primary', onclick: () => addTableFlow(E) }, '+ Agregar datos'), el('button', { type: 'button', class: 'btn', title: 'Lee una imagen (JPG, PNG, captura) o un JSON y rehace el gráfico con sus datos, ejes y rótulos', onclick: async () => { const { rebuildInEditor } = await import('./interpret.js'); rebuildInEditor(E); } }, 'Rehacer un gráfico…')),
+    el('p', { class: 'note' }, '«Rehacer un gráfico» lee una imagen o un JSON y reconstruye el tipo, los ejes de abajo y de arriba, los rótulos, las notas y los valores.'));
   const t = curTable(E);
   if (!t) return;
   E.activeTable = t.id;
@@ -96,6 +97,7 @@ function columnRow(E, t, c) {
 async function addTableFlow(E) {
   const t = await importDialog();
   if (!t) return;
+  if (t.chartSpec) { const { rebuildInEditor } = await import('./interpret.js'); return rebuildInEditor(E, null, { spec: t.chartSpec, notes: t.notes || [] }); }
   await saveNew(E, t);
   if (!E.fig.panels.length) { E.leftTab = 'graf'; }
   E.renderLeft();

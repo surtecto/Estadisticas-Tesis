@@ -1137,3 +1137,27 @@ dialog.svc-dialog { width: min(1280px, calc(100vw - 24px)); height: min(860px, c
 .isty-pc .icon { padding: 0 3px; font-size: 13px; }
 .isty .check { display: flex; gap: 6px; align-items: center; margin: 2px 0; }
 @media (max-width: 720px) { .isty { grid-template-columns: 1fr; } }
+/* rehacer un gráfico */
+.app-dialog.xwide { width: min(1240px, calc(100vw - 24px)); }
+.itp-prog { padding: 24px 4px; }
+.itp-bar { height: 8px; background: var(--line, #e3e7ea); border-radius: 4px; overflow: hidden; }
+.itp-bar i { display: block; height: 100%; width: 2%; background: var(--accent, #e8572a); transition: width .3s; }
+.itp-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.itp-l { position: sticky; top: 0; }
+.itp-img { position: relative; border: 1px solid var(--line, #d9dee3); border-radius: 6px; overflow: hidden; background: #fff; }
+.itp-img img { display: block; width: 100%; height: auto; }
+.itp-ov { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.itp-msgs { margin: 8px 0 0; padding-left: 18px; }
+.itp-kind { margin-bottom: 8px; padding: 8px 10px; background: var(--soft, #f2f5f7); border-radius: 6px; }
+.itp-r h4 { margin: 12px 0 4px; font-size: 13px; }
+.itp-tblwrap { max-height: 300px; overflow: auto; border: 1px solid var(--line, #d9dee3); border-radius: 6px; margin-bottom: 6px; }
+.itp-tbl { border-collapse: collapse; width: 100%; font-size: 12px; }
+.itp-tbl th, .itp-tbl td { border-bottom: 1px solid var(--line, #e6e9ec); padding: 0; }
+.itp-tbl th { position: sticky; top: 0; background: var(--soft, #f2f5f7); }
+.itp-tbl input { width: 100%; min-width: 64px; border: 0; padding: 4px 6px; font: inherit; background: transparent; }
+.itp-tbl th input { font-weight: 600; }
+.itp-tbl td:last-child, .itp-tbl th:last-child { width: 24px; }
+.rebuild-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; width: 100%; padding: 12px 14px; margin: 14px 0 4px; white-space: normal; height: auto; }
+.rebuild-btn span { font-weight: 400; font-size: 13px; color: var(--muted, #5d6872); }
+.info-note { background: #eef5fc; border: 1px solid #c9ddf2; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; }
+@media (max-width: 860px) { .itp-grid { grid-template-columns: 1fr; } .itp-l { position: static; } }

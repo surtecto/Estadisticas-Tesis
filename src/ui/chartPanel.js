@@ -319,7 +319,14 @@ function zonesEditor(E, p) {
   });
   const first = el('input', { type: 'text', value: o.zoneFirst || '', placeholder: 'p. ej. E0' });
   first.addEventListener('change', () => { o.zoneFirst = first.value; E.changed('franjas'); });
-  return el('details', { class: 'sec', open: !!(o.zones && o.zones.length) }, el('summary', {}, 'Franjas de referencia arriba'), el('div', { class: 'field' }, el('label', {}, 'Rótulo antes del primer corte'), first), el('div', { class: 'field' }, el('label', {}, 'Cortes: «valor = rótulo de la franja que empieza ahí»'), ta), el('p', { class: 'hint' }, 'Con unidades en metros: 1 = 1 m; 1000 = 1 km.'));
+  const parse = (txt) => txt.split(/\n/).map((l) => { const m = l.match(/^\s*([-\d.,e]+)\s*[=:]\s*(.*)$/i); return m ? { at: parseFloat(m[1].replace(/\./g, (x, i, str) => (str.includes(',') ? '' : x)).replace(',', '.')), label: m[2].trim() } : null; }).filter((z) => z && Number.isFinite(z.at));
+  const tt = el('textarea', { rows: 4, placeholder: '0,01 = 1 cm\n1 = 1 m\n1000 = 1 km' });
+  tt.value = (o.topTicks || []).map((z) => `${String(z.at).replace('.', ',')} = ${z.label}`).join('\n');
+  tt.addEventListener('change', () => { o.topTicks = parse(tt.value); E.changed('eje de arriba'); });
+  const ttl = el('input', { type: 'text', value: o.xTopTitle || '', placeholder: 'opcional' });
+  ttl.addEventListener('change', () => { o.xTopTitle = ttl.value; E.changed('eje de arriba'); });
+  return el('details', { class: 'sec', open: !!((o.zones && o.zones.length) || (o.topTicks && o.topTicks.length)) }, el('summary', {}, 'Eje de arriba: franjas o marcas'), el('div', { class: 'field' }, el('label', {}, 'Rótulo antes del primer corte'), first), el('div', { class: 'field' }, el('label', {}, 'Franjas: «valor = rótulo de la franja que empieza ahí»'), ta),
+    el('div', { class: 'field' }, el('label', {}, 'O marcas sueltas: «valor = rótulo» en ese punto'), tt), el('div', { class: 'field' }, el('label', {}, 'Título del eje de arriba'), ttl), el('p', { class: 'hint' }, 'Los valores van en la unidad del eje de abajo; con metros: 1 = 1 m; 1000 = 1 km.'));
 }
 
 function colorsBox(E, p, t) {
